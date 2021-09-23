@@ -31,7 +31,7 @@ df.sites <- df %>%
   arrange(site_id)
 
 time <- df %>% slice(n())
-time <- as.character(last[['dateTime']])
+time <- as.character(time[['dateTime']])
 
 
 ui <- dashboardPage(
