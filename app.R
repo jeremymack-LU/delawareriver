@@ -9,12 +9,7 @@ url <- "https://raw.githubusercontent.com/jeremymack-LU/delawareriver/master/dat
 df  <- read_csv(url)
 df  <- df %>% mutate(dateTime=dateTime-(3600*8))
 
-df.sites <- df %>%
-  group_by(station_nm) %>%
-  slice(n()) %>%
-  arrange(site_id)
-
-df.sites <- df.sites %>%
+df <- df %>%
   mutate(station_nm=case_when(
     station_nm == "DELAWARE RIVER AT LORDVILLE NY" ~ "Delaware River at Lordville NY",
     station_nm == "DELAWARE RIVER AT CALLICOON NY"  ~ "Delaware River at Callicoon NY",
@@ -25,18 +20,40 @@ df.sites <- df.sites %>%
     TRUE ~ station_nm
   ))
 
+df <- df %>%
+  mutate(station_nm=str_remove(station_nm,"Delaware River at"),"") %>%
+  mutate(station_nm=str_remove(station_nm,"US Route 22 at"),"") %>%
+  mutate(station_nm=str_squish(station_nm))
+
+df.sites <- df %>%
+  group_by(station_nm) %>%
+  slice(n()) %>%
+  arrange(site_id)
+
 ui <- dashboardPage(
   skin="black",
   dashboardHeader(title="Delaware River - USGS streamgages",
                   titleWidth=350),
   dashboardSidebar(
     width=350,
+    fluidRow(
+             column(12,
+                    align='center',
     selectInput(inputId="window",
                 label=HTML(paste(p(HTML('&nbsp;'),strong("Select time window:*")))),
-                choices=c("Entire time series", "14-day", "7-day", "1-day"))),
-    # selectInput(inputId="site",
-    #             label=HTML(paste(p(HTML('&nbsp;'),strong("Select site:*")))),
-    #             choices=distinct(df.sites,station_nm))),
+                choices=c("Entire time series", "14-day", "7-day", "1-day")))),
+    fluidRow(
+             column(12,
+                    align='center',
+                    selectInput(inputId="site",
+                                label=HTML(paste(p(HTML('&nbsp;'),strong("Select site:*")))),
+                                choices=df.sites[['station_nm']]))),
+    br(),
+    fluidRow(column(12,
+                    align='center',
+                    #offset=1,
+                    tableOutput(outputId="table")))
+    ),
   dashboardBody(
     fluidRow(
       column(6, box(leafletOutput("map",height="800px"), width = NULL, solidHeader=TRUE)),
@@ -57,6 +74,22 @@ server <- function(input, output) {
     df %>%
       filter(dateTime >= Sys.Date()-window())
   })
+  
+  sum.table <- reactive({
+    df2b <- df2() %>%
+      filter(station_nm==input$site)
+    
+    tibble(
+      'Variable'=c('Site','Length','Avg. Max. Height','Max. Height'),
+      'Value'=c(input$site,
+                input$window,
+                round(mean(df2b$max, na.rm=TRUE),1),
+                round(max(df2b$max, na.rm=TRUE),1))
+    )
+  })
+
+  # Table
+  output$table <- renderTable(sum.table(),bordered=TRUE,colnames=FALSE)
   # Map output
   output$map <- renderLeaflet({
     # Default view location
