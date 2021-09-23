@@ -21,14 +21,18 @@ df <- df %>%
   ))
 
 df <- df %>%
-  mutate(station_nm=str_remove(station_nm,"Delaware River at"),"") %>%
-  mutate(station_nm=str_remove(station_nm,"US Route 22 at"),"") %>%
+  mutate(station_nm=str_remove(station_nm,"Delaware River at")) %>%
+  mutate(station_nm=str_remove(station_nm,"US Route 22 at")) %>%
   mutate(station_nm=str_squish(station_nm))
 
 df.sites <- df %>%
   group_by(station_nm) %>%
   slice(n()) %>%
   arrange(site_id)
+
+time <- df %>% slice(n())
+time <- as.character(last[['dateTime']])
+
 
 ui <- dashboardPage(
   skin="black",
@@ -57,7 +61,11 @@ ui <- dashboardPage(
   dashboardBody(
     fluidRow(
       column(6, box(leafletOutput("map",height="800px"), width = NULL, solidHeader=TRUE)),
-      column(6, box(plotOutput("plot",height="800px"), width = NULL, solidHeader=TRUE)))))
+      column(6, box(plotOutput("plot",height="800px"), width = NULL, solidHeader=TRUE))),
+    fluidRow(
+      column(12,
+             align='center',
+             paste("*Data updated at",time,"ET. Data provided by USGS dataRetrieval package in R")))))
 
 server <- function(input, output) {
   # Create window variable based on selection
